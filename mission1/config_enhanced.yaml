@@ -1,0 +1,161 @@
+# config_enhanced.yaml - 增强版配置 (更多特征 + 集成模型)
+# 目标：通过更丰富的特征工程和模型集成提高F1分数
+
+# ---------------------------
+# 数据集路径
+# ---------------------------
+dataset_root: "D:\\学习\\机器实验\\mission1\\neu-plant-seedling-classification-2025\\dataset-for-task1\\dataset-for-task1"
+train_subdir: "train"
+test_subdir: "test"
+
+# ---------------------------
+# 图像/特征参数 - 基础
+# ---------------------------
+image_side: 512
+use_sift: true
+dense: true
+step_dense: 8          # 更密集的采样
+k: 1100                 # 增大词表大小
+sample_descs: 800000
+random_state: 99
+
+# ---------------------------
+# BoVW特征
+# ---------------------------
+use_bovw: true
+spm_levels: [0]
+
+# ---------------------------
+# 颜色特征 - 增强
+# ---------------------------
+use_color_hist: true
+color_bins: [64, 8, 8]  # HSV直方图
+use_color_rgb: true     # 新增：RGB直方图
+use_color_lab: true     # 新增：Lab直方图
+use_color_moments: true # 新增：颜色矩
+
+
+use_hog: false
+hog_params:
+  pixels_per_cell: [16, 16]
+  cells_per_block: [2, 2]
+  orientations: 9
+
+use_lbp: true
+lbp_params:
+  P: 24
+  R: 3
+  method: "uniform"
+use_multi_scale_lbp: false  # 可选：多尺度LBP
+
+use_glcm: true              # 新增：GLCM纹理特征
+glcm_params:
+  distances: [1, 2, 3]
+  angles: [0, 0.785, 1.57, 2.356]
+  levels: 64
+
+use_gabor: true             # 新增：Gabor滤波器特征
+gabor_params:
+  frequencies: [0.1, 0.2, 0.3, 0.4]
+  n_theta: 4
+
+# ---------------------------
+# 形状特征 - 新增
+# ---------------------------
+use_hu_moments: true        # Hu不变矩
+use_shape_context: true     # 形状上下文
+use_edge_hist: true         # 边缘方向直方图
+
+# ---------------------------
+# 降维与归一化
+# ---------------------------
+pca_dim: null               # 不使用PCA（保留全部特征）
+scaler: "normalize"
+
+# ---------------------------
+# 模型配置 - 使用Stacking集成（最佳F1=0.8660）
+# ---------------------------
+model_name: "stacking"        # 改用Stacking集成
+
+# 单模型参数
+rf_params:
+  n_estimators: 400           # 最佳参数
+  max_depth: null
+  min_samples_split: 2
+  min_samples_leaf: 1
+  max_features: "sqrt"
+  class_weight: "balanced"
+  random_state: 0
+
+et_params:
+  n_estimators: 400
+  max_depth: null
+  max_features: "sqrt"
+  class_weight: "balanced"
+  random_state: 0
+
+svm_params:
+  kernel: "rbf"
+  probability: true
+  C: 150.0                    # 增大C值
+  gamma: "scale"
+  class_weight: "balanced"
+
+knn_params:
+  n_neighbors: 7
+  weights: "distance"
+  metric: "euclidean"
+
+gb_params:
+  n_estimators: 150
+  learning_rate: 0.1
+  max_depth: 5
+
+# 集成参数 - 移除SVM（表现差）
+ensemble_params:
+  voting: "soft"
+  models: ["rf", "et", "svm"]
+  weights: [1.0, 1.0, 1.5]    # RF权重最高
+  meta_classifier: "logreg"   # Stacking的元分类器
+  primary: "svm"
+  secondary: ["rf", "et"]
+  confidence_threshold: 0.7
+
+# ---------------------------
+# 验证配置
+# ---------------------------
+do_validation: true
+validation_size: 0.2
+validation_only: false
+save_validation_artifact: true
+
+# ---------------------------
+# Two-stage refinement - 保留并优化
+# ---------------------------
+two_stage:
+  mode: "auto"
+  top_k: 3                  # 增加混淆对数量
+  manual_pairs: []
+  binary_model: "rf"
+  binary_params:
+    n_estimators: 400
+    random_state: 0
+    class_weight: "balanced"
+  balance_method: "oversample"
+  min_samples_for_pair: 25
+  min_binary_acc: 0.70      # 新增：只保留精度>=80%的二分类器
+  prob_threshold: 0.55
+  verbose: true
+
+# ---------------------------
+# 输出目录
+# ---------------------------
+artifacts_dir: "artifacts"
+results_dir: "results"
+output_predictions: "predictions.csv"
+validation_output: "validation_results.csv"
+template_csv: "submission-for-task1.csv"
+artifacts_cleanup: false
+results_cleanup: false
+orb_features: 1000
+
